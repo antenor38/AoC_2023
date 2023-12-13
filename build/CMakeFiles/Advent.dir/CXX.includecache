@@ -1,0 +1,46 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+../include/HotSprings.hpp
+iostream
+-
+vector
+-
+tuple
+-
+string
+-
+sstream
+-
+numeric
+-
+algorithm
+-
+map
+-
+memory
+-
+Reader.hpp
+-
+
+../include/Reader.hpp
+string
+-
+iostream
+-
+fstream
+-
+sstream
+-
+vector
+-
+
+/home/abu/projects/sandbox/AoC_2023/src/HotSprings.cpp
+HotSprings.hpp
+-
+
