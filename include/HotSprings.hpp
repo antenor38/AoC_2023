@@ -26,11 +26,12 @@ public:
         Mixed
     };
 
-    typedef tuple<size_t, size_t> Group;
+    typedef vector<Spring> Group;
     typedef tuple<Spring, Group> GroupWithType;
     typedef vector<GroupWithType> GroupsVector;
 
 private:
     vector<uint16_t> findEmptyColumns(vector<string> columns);
-    uint64_t calculateArrangement(vector<Spring> springRow, vector<uint8_t> instructions); 
+    uint64_t calculateArrangement(vector<vector<uint8_t>> rowCombinations, vector<uint8_t> instructions);
+    vector<vector<uint8_t>> findCombinations(GroupsVector groups, size_t const instructionsSize);
 };
