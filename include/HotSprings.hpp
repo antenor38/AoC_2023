@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <bitset>
+// #include <tgmath.h>
 #include <Reader.hpp>
 
 using namespace std;
@@ -32,6 +34,8 @@ public:
 
 private:
     vector<uint16_t> findEmptyColumns(vector<string> columns);
-    uint64_t calculateArrangement(vector<vector<uint8_t>> rowCombinations, vector<uint8_t> instructions);
-    vector<vector<uint8_t>> findCombinations(GroupsVector groups, size_t const instructionsSize);
+    uint64_t findCombinations(tuple<bitset<100>, vector<size_t>> groups, vector<uint8_t> instructions);
+    uint64_t calculateCombinations(bitset<100> const& springRow, vector<size_t> groupBorders, vector<tuple<uint64_t, size_t>> instructions);
+
+    void parseSpringRowsAndInstruction(bitset<100>& springRow, string const& springRowString, vector<size_t>& groupBorders, vector<uint8_t>& instructions, string const& instructionsString);
 };

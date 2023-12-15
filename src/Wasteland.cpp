@@ -1,5 +1,10 @@
 #include <Wasteland.hpp>
+
+#ifdef _WIN32
+#include <windows.h>
+#elif __unix
 #include <pthread.h>
+#endif
 
 
 uint64_t WastelandInstructions::navigateDesert(std::vector<std::string> lines)
