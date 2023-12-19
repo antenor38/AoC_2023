@@ -1,5 +1,43 @@
 #include <HotSprings.hpp>
 
+map<uint8_t, uint64_t> HotSprings::mapSpringRowInstructionsCombinations(bitset<100> const& springRow, vector<size_t> groupBorders, vector<tuple<uint64_t, size_t>> instructions, bool isBase)
+{
+    map<uint8_t, uint64_t> result;
+
+    // One combination when there are no instructions
+    result[0] = 1;
+
+    uint64_t combinations = 0;
+
+    vector<tuple<uint64_t, size_t>>  currentInstructions;
+    size_t count = 0;
+
+    do{
+        size_t pos = count % instructions.size();
+        if(isBase)
+        {
+            currentInstructions.insert(currentInstructions.begin(), instructions.at(instructions.size() - 1 - pos));
+        }
+        else
+        {
+            currentInstructions.push_back(instructions.at(pos));
+        }
+        count++;
+        combinations = calculateCombinations(springRow, groupBorders, currentInstructions);
+
+        result[currentInstructions.size()] = combinations;
+    }while(0 != combinations || count < instructions.size());
+
+    //fill with 0's the rest
+
+    for(auto i = currentInstructions.size(); i <= (currentInstructions.size() + (instructions.size() * 4)); i++)
+    {
+        result[i] = 0;
+    }
+
+    return result;
+}
+
 uint64_t HotSprings::calculateCombinations(bitset<100> const& springRow, vector<size_t> groupBorders, vector<tuple<uint64_t, size_t>> instructions)
 {
     uint64_t combinations = 0;
@@ -75,6 +113,14 @@ uint64_t HotSprings::calculateCombinations(bitset<100> const& springRow, vector<
                 });
                 possibleCombinations *= calculateCombinations(nextSpringRow, nextGroupBorders, instructions);
             }
+            else
+            {
+                springRowWork = springRow >> (currentInstructionSize + i);
+                if(0 != springRowWork.count())
+                {
+                    possibleCombinations = 0;
+                }
+            }
             combinations += possibleCombinations;
         }
         else if (i > 0)
@@ -93,9 +139,8 @@ uint64_t HotSprings::calculateCombinations(bitset<100> const& springRow, vector<
     return combinations;
 }
 
-uint64_t HotSprings::findCombinations(tuple<bitset<100>, vector<size_t>> groups, vector<uint8_t> instructions)
+map<uint8_t, uint64_t> HotSprings::findCombinations(tuple<bitset<100>, vector<size_t>> groups, vector<uint8_t> instructions, bool isBase)
 {
-    uint64_t finalCombinations = 0;
     bitset<100> const springRow = get<bitset<100>>(groups);
     vector<size_t> groupBorders = get<vector<size_t>>(groups);
     vector<tuple<uint64_t, size_t>> bitInstructions;
@@ -111,7 +156,7 @@ uint64_t HotSprings::findCombinations(tuple<bitset<100>, vector<size_t>> groups,
         bitInstructions.push_back(make_tuple(bitInstruction, static_cast<size_t>(instruction)));
     }
 
-    finalCombinations = calculateCombinations(springRow, groupBorders, bitInstructions);
+    auto finalCombinations = mapSpringRowInstructionsCombinations(springRow, groupBorders, bitInstructions, isBase);
 
     return finalCombinations;
 }
@@ -179,55 +224,134 @@ uint64_t HotSprings::calculateSpringArrangements(vector<string> lines)
         auto springRowString = split.at(0);
         auto instructionsString = split.at(1);
 
-        auto springRowStringSecond = springRowString + "?" + springRowString;
-        auto instructionsStringSecond = instructionsString + "," + instructionsString;
+        map<uint8_t, uint64_t> baseMap;
+        map<uint8_t, uint64_t> prefixMap;
 
-        auto springRowStringThird = springRowStringSecond + "?" + springRowString;
-        auto instructionsStringThird = instructionsStringSecond + "," + instructionsString;
+        auto springRowStringSecond = springRowString + "?";
+        // auto instructionsStringSecond = instructionsString + "," + instructionsString;
 
-        // cout << springRowString << endl << instructionsString << endl;
+        // auto springRowStringThird = springRowStringSecond + "?" + springRowString;
+        // auto instructionsStringThird = instructionsStringSecond + "," + instructionsString;
 
         parseSpringRowsAndInstruction(springRow, springRowString, groupBorders, instructions, instructionsString);
-        uint64_t firstResult = findCombinations(make_tuple(springRow, groupBorders), instructions);
+        baseMap = findCombinations(make_tuple(springRow, groupBorders), instructions);
 
         springRow = 0;
         groupBorders.clear();
         instructions.clear();
 
-        parseSpringRowsAndInstruction(springRow, springRowStringSecond, groupBorders, instructions, instructionsStringSecond);
-        uint64_t secondResult = findCombinations(make_tuple(springRow, groupBorders), instructions);
+        parseSpringRowsAndInstruction(springRow, springRowStringSecond, groupBorders, instructions, instructionsString);
+        prefixMap = findCombinations(make_tuple(springRow, groupBorders), instructions, false);
 
-        springRow = 0;
-        groupBorders.clear();
-        instructions.clear();
+        auto prefixMapActsAsBase = findCombinations(make_tuple(springRow, groupBorders), instructions);
 
-        parseSpringRowsAndInstruction(springRow, springRowStringThird, groupBorders, instructions, instructionsStringThird);
-        uint64_t thirdResult = findCombinations(make_tuple(springRow, groupBorders), instructions);
-
-        long double diffSecondToFirst = static_cast<long double>(secondResult)/firstResult;
-        long double diffThirdToSecond = static_cast<long double>(thirdResult)/secondResult;
-
-        uint64_t totalResult = 0;
-
-        if(diffSecondToFirst == diffThirdToSecond)
+        cout << "PREFIX | BASE" << endl;
+        for(int i = 0; i < baseMap.size();i++)
         {
-            totalResult = thirdResult * static_cast<uint64_t>(powl(diffThirdToSecond, 2));
+            cout << "     " << prefixMap[i] << " | " << baseMap[i] << endl;
         }
-        else
-        {
-            long double diffOfDiffs = diffThirdToSecond / diffSecondToFirst;
-            long double diffFourthToThird = diffOfDiffs * diffThirdToSecond;
-            long double diffFifthToFourth = diffOfDiffs * diffFourthToThird;
+        cout << endl;
 
-            uint64_t fourthResult = thirdResult * diffFourthToThird;
-            totalResult = fourthResult * diffFifthToFourth;
+        size_t instructionsSize = instructions.size();
+        uint64_t result;
+        for(uint8_t i = 0; i < 4; i++)
+        {
+            size_t const instructionsSize = (instructions.size() * (i + 2));//6
+            map<uint8_t, uint64_t> nextBaseMap;
+            nextBaseMap[0] = 1;
+            
+            cout << "1, ";
+            for(size_t j = 1; j <= instructionsSize + instructions.size() * 2 ; j++)//9
+            {
+                uint64_t nextBaseResult = 0;
+                for(size_t k = 0; k <= j; k++)
+                {
+                    size_t baseIT = (j - k);
+                    if(j <= instructionsSize)
+                    {
+                        size_t prefixIT = k;
+                        nextBaseResult += baseMap[baseIT] * prefixMap[prefixIT];
+                    }
+                    else
+                    {
+
+                    }
+                }
+                nextBaseMap[j] = nextBaseResult;
+                cout << nextBaseResult << ", ";
+                if(instructionsSize == j)
+                {
+                    result = nextBaseResult;
+                }
+                if(0 == nextBaseResult)
+                {
+                    break;
+                }
+            }
+            cout << endl;
+            for(size_t j = 1; j <= instructions.size(); j++)
+            {
+                size_t prefixIT = instructions.size() + j;
+                if(prefixMapActsAsBase.count(prefixIT) == 0)
+                {
+                    prefixMapActsAsBase[prefixIT] = 0;
+                }
+                
+                uint64_t nextBaseResult = 0;
+                for(size_t k = 0; k <= j; k++)
+                {
+                    size_t baseIT = (j - k), prefixIT = k;
+                    nextBaseResult += baseMap[baseIT] * prefixMap[prefixIT];
+                }
+                nextBaseMap[j] = nextBaseResult;
+                cout << nextBaseResult << ", ";
+            }
+            baseMap = nextBaseMap;
+            cout << "Temp result = " << result << endl;
         }
-        cout << "totalResult = " << totalResult << endl;
+        cout << endl;
+
+        // springRow = 0;
+        // groupBorders.clear();
+        // instructions.clear();
+
+        // parseSpringRowsAndInstruction(springRow, springRowStringThird, groupBorders, instructions, instructionsStringThird);
+        // uint64_t thirdResult = findCombinations(make_tuple(springRow, groupBorders), instructions);
+
+        // long double diffSecondToFirst = static_cast<long double>(secondResult)/firstResult;
+        // long double diffThirdToSecond = static_cast<long double>(thirdResult)/secondResult;
+
+        // uint64_t totalResult = 0;
+        // uint64_t fourthResult = 0;
+
+        // if(diffSecondToFirst == diffThirdToSecond)
+        // {
+        //     totalResult = thirdResult * static_cast<uint64_t>(powl(diffThirdToSecond, 2));
+        // }
+        // else
+        // {
+        //     long double diffOfDiffs = diffThirdToSecond / diffSecondToFirst;
+        //     long double diffFourthToThird = diffOfDiffs * diffThirdToSecond;
+        //     long double diffFifthToFourth = diffOfDiffs * diffFourthToThird;
+
+        //     fourthResult = thirdResult * diffFourthToThird;
+        //     totalResult = fourthResult * diffFifthToFourth;
+        // }
+
+        // springRow = 0;
+        // groupBorders.clear();
+        // instructions.clear();
+
+        // parseSpringRowsAndInstruction(springRow, springRowStringFourth, groupBorders, instructions, instructionsStringFourth);
+        // uint64_t fourthReal = findCombinations(make_tuple(springRow, groupBorders), instructions);
+        // cout << "line " << lineNum << ", firstResult = " << firstResult << ", second = " << secondResult << ", third = " << thirdResult << endl;
+        // cout << "second/first = " << static_cast<double>(secondResult)/firstResult << ", third/first = " << static_cast<double>(thirdResult)/firstResult << endl;
         // if(thirdResult != totalResult)
         // {
-        //     cout << "Line: " << lineNum << ", first result = " << firstResult << ", second = " << secondResult << ", third = " << thirdResult << endl;
+            // cout << "Line: " << lineNum << ", first result = " << firstResult << ", second = " << secondResult << ", third = "
+            // << thirdResult << ", forth calculated = " << fourthResult << ", fourth real = " << fourthReal << endl;
         // }
-        sum += totalResult;
+        sum += result;
         
         // bitset<100> bitRow(springRow);
         // cout << bitRow.to_string() << endl;
